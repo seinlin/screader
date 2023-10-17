@@ -2,6 +2,9 @@
 name = "screader"
 version = "0.1.0"
 edition = "2021"
+authors = ["Seinlin Li <seinlin.maung@gmail.com>"]
+description = "A command line tool to access smartcard with PC/SC reader."
+license = "MIT"
 
 [dependencies]
 smartcard = "0.3"
