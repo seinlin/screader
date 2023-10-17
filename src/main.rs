@@ -1,5 +1,4 @@
-// extern crate smartcard;
-
+use std::io::{self, Write};
 use smartcard::logic::Context;
 use smartcard::logic::reader::Reader;
 use smartcard::parameters::{ShareMode, Protocol};
@@ -26,9 +25,29 @@ fn get_reader(context: &Arc<Context>) -> Result<Reader> {
     }
 
     // Let's get the first reader.
+    // TODO: select the reader when there are more than one.
     let reader = readers.pop().ok_or(format!("no readers found"))?;
 
     Ok(reader)
+}
+
+fn str_to_apdu(input: &str) -> Result<Vec<u8>> {
+    if input.len() % 2 != 0 {
+        return Err("Input string length must be even.".into());
+    }
+
+    let mut result = Vec::new();
+
+    for i in 0..input.len() / 2 {
+        let byte_str = &input[i * 2..(i * 2) + 2];
+        if let Ok(byte) = u8::from_str_radix(byte_str, 16) {
+            result.push(byte);
+        } else {
+            return Err("invalid APDU".into());
+        }
+    }
+
+    Ok(result)
 }
 
 fn main() {
@@ -51,17 +70,38 @@ fn main() {
         Err(e) => { println!("Get card error: {}.", e.to_string()); return; }
     };
 
-    // Now that we have a card available, we can send commands to it.
-    // select app on my card
-    let cmd_vec = vec![0x00, 0xA4, 0x04, 0x00, 0x0B, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x00, 0x00];
+    loop {
+        let mut input = String::new();
+        print!(">> ");
+        let _ = io::stdout().flush();
 
-    // 256 is the maximum size of the expected answer
-    match card.send_raw_command(&cmd_vec, 256) {
-        Ok(answer) => {
-            println!("Answer: {:?}", answer);
-        }
-        Err(e) => {
-            println!("Command error: {}.", e.to_string());
+        match io::stdin().read_line(&mut input) {
+            Ok(_) => {
+                let cmd: &str = &input.trim();
+                if cmd == "quit" {
+                    break;
+                } else if cmd == "help" {
+                    println!("TODO: print usage.");
+                } else {
+                    let apdu = str_to_apdu(&cmd.split(' ').collect::<Vec<_>>().join("")).unwrap();
+
+                    println!("CMD: {:02X?}", apdu);
+
+                    // 256 is the maximum size of the expected response.
+                    match card.send_raw_command(&apdu, 256) {
+                        Ok(answer) => {
+                            println!("RES: {:02X?}", answer);
+                        }
+                        Err(e) => {
+                            println!("ERR: {}.", e.to_string());
+                        }
+                    }
+                }
+            }
+            Err(err) => {
+                println!("Error: {:?}", err);
+                break;
+            }
         }
     }
 }
