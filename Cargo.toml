@@ -3,7 +3,8 @@ name = "screader"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-smartcard = { version = "0.3", path = "smartcard-rs" }
+smartcard = "0.3"
+
+[patch.crates-io]
+smartcard = { git = "https://github.com/seinlin/smartcard-rs.git", branch = "master" }
